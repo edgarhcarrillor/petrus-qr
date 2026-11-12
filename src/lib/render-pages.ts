@@ -8,7 +8,9 @@
  * a quien escanea el QR.
  */
 
-export type RenderedPage = { blob: Blob; ext: string; width: number; height: number };
+import { extractItems, type TextItem } from "./plan-index";
+
+export type RenderedPage = { blob: Blob; ext: string; width: number; height: number; text?: TextItem[] };
 
 // Lado mayor máximo y área máxima (iOS Safari limita los canvas a ~16,7 MP).
 const MAX_SIDE = 4096;
@@ -94,7 +96,9 @@ export async function renderPdf(
       await page.render({ canvas, canvasContext: ctx, viewport }).promise;
       drawWatermark(ctx, canvas.width, canvas.height, watermark);
       const { blob, ext } = await canvasToBlob(canvas);
-      out.push({ blob, ext, width: canvas.width, height: canvas.height });
+      // Texto con posiciones (normalizadas a la hoja tal como se ve, con rotación).
+      const text = extractItems((await page.getTextContent()).items, page.getViewport({ scale: 1 }));
+      out.push({ blob, ext, width: canvas.width, height: canvas.height, text });
       page.cleanup();
       canvas.width = canvas.height = 0; // libera memoria
       onProgress?.(n, doc.numPages);

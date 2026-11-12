@@ -1,4 +1,6 @@
 import "server-only";
+import { cacheLife } from "next/cache";
+import { searchIndex, type PlanIndex, type SearchResult } from "@/lib/plan-index";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BUCKET, SIGNED_URL_TTL } from "@/lib/constants";
 import type { QrCode, QrVersion } from "@/lib/types";
@@ -29,7 +31,7 @@ export async function getPublicQr(slug: string): Promise<PublicQr | null> {
   return { qr, version };
 }
 
-export type SignedPage = { url: string; width: number; height: number };
+export type SignedPage = { url: string; width: number; height: number; name?: string };
 
 /** URLs firmadas de vida corta para las imágenes de página. Nunca el original. */
 export async function signPages(version: QrVersion): Promise<SignedPage[]> {
@@ -40,7 +42,7 @@ export async function signPages(version: QrVersion): Promise<SignedPage[]> {
     .createSignedUrls(version.pages.map((p) => p.path), SIGNED_URL_TTL);
   if (error || !data) return [];
   return version.pages.flatMap((p, i) =>
-    data[i]?.signedUrl ? [{ url: data[i].signedUrl, width: p.width, height: p.height }] : [],
+    data[i]?.signedUrl ? [{ url: data[i].signedUrl, width: p.width, height: p.height, name: p.name }] : [],
   );
 }
 
@@ -51,4 +53,32 @@ export async function logScan(qrId: string, country: string | null, userAgent: s
     country: country?.slice(0, 8) ?? null,
     user_agent: userAgent?.slice(0, 300) ?? null,
   });
+}
+
+/**
+ * Índice de texto de una versión. Es inmutable (cada versión tiene su propio
+ * archivo), así que se cachea en el servidor sin vencimiento.
+ */
+async function loadIndex(path: string): Promise<PlanIndex> {
+  "use cache";
+  cacheLife("max");
+  // Errores se lanzan (no se cachean) para reintentar en la próxima búsqueda.
+  const db = createAdminClient();
+  const { data, error } = await db.storage.from(BUCKET).download(path);
+  if (error || !data) throw new Error(`No se pudo leer el índice: ${error?.message}`);
+  const json = JSON.parse(await data.text()) as PlanIndex;
+  if (json?.v !== 1 || !Array.isArray(json.pages)) throw new Error("Índice inválido");
+  return json;
+}
+
+/** Busca en el plano actual de un QR. null = QR sin buscador o inexistente. */
+export async function searchPlan(slug: string, q: string): Promise<SearchResult | null> {
+  const found = await getPublicQr(slug);
+  const v = found?.version;
+  if (!found?.qr.is_active || !v?.searchable || !v.index_path) return null;
+  try {
+    return searchIndex(await loadIndex(v.index_path), q, 120);
+  } catch {
+    return null;
+  }
 }

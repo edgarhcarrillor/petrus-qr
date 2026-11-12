@@ -46,6 +46,7 @@ export function VersionList({
                 <p className="text-sm font-medium">
                   {KIND_LABEL[v.kind]}
                   {v.pages.length > 0 && ` · ${v.pages.length} pág.`}
+                  {v.searchable && " · 🔎 buscador"}
                   {isCurrent && (
                     <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-xs text-white">Actual</span>
                   )}

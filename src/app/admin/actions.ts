@@ -65,6 +65,8 @@ export type PublishInput = {
   originalPath?: string;
   originalName?: string;
   pages?: PageRef[];
+  searchable?: boolean;
+  indexPath?: string;
 };
 
 /**
@@ -77,7 +79,11 @@ export async function publishVersion(input: PublishInput): Promise<ActionResult>
   const inPrefix = (p?: string) => !p || p.startsWith(prefix);
 
   if (!/^[0-9a-f-]{36}$/i.test(input.versionId)) return { ok: false, error: "Versión inválida" };
-  if (!inPrefix(input.originalPath) || !(input.pages ?? []).every((p) => inPrefix(p.path))) {
+  if (
+    !inPrefix(input.originalPath) ||
+    !inPrefix(input.indexPath) ||
+    !(input.pages ?? []).every((p) => inPrefix(p.path))
+  ) {
     return { ok: false, error: "Ruta de archivo inválida" };
   }
 
@@ -102,7 +108,14 @@ export async function publishVersion(input: PublishInput): Promise<ActionResult>
     row.body = body.slice(0, 20000);
   } else {
     if (!input.pages?.length) return { ok: false, error: "No hay páginas" };
-    row.pages = input.pages;
+    row.pages = input.pages.map((p) => ({
+      path: p.path,
+      width: Math.round(p.width),
+      height: Math.round(p.height),
+      ...(p.name ? { name: String(p.name).slice(0, 90) } : {}),
+    }));
+    row.searchable = input.kind === "pdf" && !!input.searchable && !!input.indexPath;
+    row.index_path = row.searchable ? input.indexPath : null;
     row.original_path = input.originalPath ?? null;
     row.original_name = input.originalName?.slice(0, 200) ?? null;
     row.body = input.body?.trim().slice(0, 20000) || null;

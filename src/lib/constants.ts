@@ -1,7 +1,7 @@
 export const BUCKET = "qr-files";
 
 /** Segundos que vive una URL firmada del visor. */
-export const SIGNED_URL_TTL = 60 * 10;
+export const SIGNED_URL_TTL = 60 * 30;
 
 export const KIND_LABEL = {
   pdf: "PDF / Planos",
@@ -12,7 +12,7 @@ export const KIND_LABEL = {
 
 export type ContentKind = keyof typeof KIND_LABEL;
 
-export type PageRef = { path: string; width: number; height: number };
+export type PageRef = { path: string; width: number; height: number; name?: string };
 
 /**
  * URL base que va DENTRO del QR impreso. Viene de NEXT_PUBLIC_QR_BASE_URL

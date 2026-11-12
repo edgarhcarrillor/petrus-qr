@@ -70,7 +70,7 @@ async function Content({ params }: { params: Promise<{ slug: string }> }) {
   return (
     <>
       {header}
-      <Viewer pages={pages} title={qr.title} />
+      <Viewer pages={pages} title={qr.title} slug={qr.slug} searchable={version.kind === "pdf" && version.searchable} />
     </>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileText, Image as ImageIcon, Link2, Type, Upload } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { BUCKET, KIND_LABEL, type ContentKind, type PageRef } from "@/lib/constants";
+import { buildPage, type PlanIndex } from "@/lib/plan-index";
 import { renderImage, renderPdf } from "@/lib/render-pages";
 import { publishVersion, type ActionResult } from "../../actions";
 
@@ -24,6 +25,7 @@ export function ContentEditor({ qrId, ownerId }: { qrId: string; ownerId: string
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -51,17 +53,33 @@ export function ContentEditor({ qrId, ownerId }: { qrId: string; ownerId: string
       .upload(originalPath, file, { contentType: file.type || undefined });
     if (up.error) throw new Error(up.error.message);
 
+    // Índice de texto: nombre de cada hoja y, si es plano eléctrico, el buscador.
+    const indexPages = rendered.map((p, i) => buildPage(p.text ?? [], i + 1));
+    const searchable = kind === "pdf" && fd.get("searchable") === "on";
+    let indexPath: string | undefined;
+    if (searchable) {
+      setStatus("Indexando marquillas…");
+      const index: PlanIndex = { v: 1, pages: indexPages };
+      indexPath = `${prefix}/index.json`;
+      const r = await supabase.storage
+        .from(BUCKET)
+        .upload(indexPath, new Blob([JSON.stringify(index)], { type: "application/json" }), {
+          contentType: "application/json",
+        });
+      if (r.error) throw new Error(r.error.message);
+    }
+
     const pages: PageRef[] = [];
     for (const [i, p] of rendered.entries()) {
       setStatus(`Subiendo página ${i + 1} de ${rendered.length}…`);
       const path = `${prefix}/p${String(i + 1).padStart(3, "0")}.${p.ext}`;
       const r = await supabase.storage.from(BUCKET).upload(path, p.blob, { contentType: p.blob.type });
       if (r.error) throw new Error(r.error.message);
-      pages.push({ path, width: p.width, height: p.height });
+      pages.push({ path, width: p.width, height: p.height, name: isPdf ? indexPages[i].name : undefined });
     }
 
     setStatus("Publicando…");
-    return publishVersion({
+    const result = await publishVersion({
       qrId,
       versionId,
       kind,
@@ -69,12 +87,28 @@ export function ContentEditor({ qrId, ownerId }: { qrId: string; ownerId: string
       originalPath,
       originalName: file.name,
       body: String(fd.get("note") ?? ""),
+      searchable,
+      indexPath,
     });
+    if (result.ok && searchable) {
+      const textCount = indexPages.reduce((n, p) => n + p.items.length, 0);
+      const rows = indexPages.reduce((n, p) => n + p.tables.reduce((m, t) => m + t.rows.length, 0), 0);
+      const tablePages = indexPages.flatMap((p, i) => (p.tables.length ? [i + 1] : []));
+      setSummary(
+        !textCount
+          ? "Ojo: el PDF no trae texto (parece escaneado o con letras convertidas a dibujo). El buscador no encontrará nada."
+          : rows
+          ? `Buscador activo: ${rows} filas de marquillas/tags leídas (hoja ${tablePages.join(", ")}).`
+          : "Buscador activo, pero no se encontró una tabla de marquillas (columna «Marquilla» o «Tag»). Se buscará solo sobre el dibujo.",
+      );
+    }
+    return result;
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setSummary(null);
     const fd = new FormData(e.currentTarget);
     const versionId = crypto.randomUUID();
     setBusy(true);
@@ -136,6 +170,19 @@ export function ContentEditor({ qrId, ownerId }: { qrId: string; ownerId: string
                 accept={kind === "pdf" ? "application/pdf,.pdf" : "image/*"}
               />
             </label>
+            {kind === "pdf" && (
+              <label className="flex items-start gap-3 rounded-lg border border-line p-3 text-sm">
+                <input name="searchable" type="checkbox" className="mt-0.5 size-4 accent-brand" />
+                <span>
+                  <span className="font-medium">Plano eléctrico: activar buscador de marquillas</span>
+                  <span className="block text-muted">
+                    El electricista podrá buscar una marquilla o tag (ej. 503, Q1) y ver dónde aparece
+                    en cada hoja y qué dice la tabla de marquillas. Requiere un PDF con texto (exportado
+                    desde CAD, no escaneado).
+                  </span>
+                </span>
+              </label>
+            )}
             <label className="field">
               <span>
                 Nota visible <span className="font-normal text-muted">(opcional)</span>
@@ -163,6 +210,7 @@ export function ContentEditor({ qrId, ownerId }: { qrId: string; ownerId: string
 
         {error && <p className="text-sm text-danger">{error}</p>}
         {status && <p className="text-sm text-ok">{status}</p>}
+        {summary && <p className="rounded-lg bg-bg p-3 text-sm">{summary}</p>}
 
         <button className="btn btn-primary" disabled={busy}>
           <Upload size={16} /> {busy ? "Publicando…" : "Publicar"}

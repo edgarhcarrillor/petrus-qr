@@ -20,5 +20,7 @@ export type QrVersion = {
   original_path: string | null;
   original_name: string | null;
   pages: PageRef[];
+  searchable: boolean;
+  index_path: string | null;
   created_at: string;
 };
