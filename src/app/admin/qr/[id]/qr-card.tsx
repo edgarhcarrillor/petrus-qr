@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import QRCode from "qrcode";
+import { useEffect, useMemo, useState } from "react";
 import { Copy, Download, ExternalLink, TriangleAlert } from "lucide-react";
 import { isProvisionalBase, qrBaseUrl } from "@/lib/constants";
+import { buildQrSvg, svgToPng } from "@/lib/qr-art";
 
-export function QrCard({ slug, title }: { slug: string; title: string }) {
+export function QrCard({ slug, title, label }: { slug: string; title: string; label: string | null }) {
   const [base, setBase] = useState("");
-  const [svg, setSvg] = useState("");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -17,17 +16,11 @@ export function QrCard({ slug, title }: { slug: string; title: string }) {
   }, []);
 
   const url = base ? `${base}/q/${slug}` : "";
-
-  useEffect(() => {
-    if (!url) return;
-    QRCode.toString(url, { type: "svg", errorCorrectionLevel: "Q", margin: 2 }).then(setSvg);
-  }, [url]);
-
+  const svg = useMemo(() => (url ? buildQrSvg(url, label) : ""), [url, label]);
   const fileBase = `QR-${title.replace(/[^\w-]+/g, "_").slice(0, 40)}-${slug}`;
 
   async function downloadPng() {
-    const data = await QRCode.toDataURL(url, { errorCorrectionLevel: "Q", margin: 2, width: 2048 });
-    save(data, `${fileBase}.png`);
+    save(await svgToPng(svg, 2048), `${fileBase}.png`);
   }
   function downloadSvg() {
     const href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
@@ -50,7 +43,7 @@ export function QrCard({ slug, title }: { slug: string; title: string }) {
     <div className="card flex flex-col gap-4 p-5">
       <div
         className="mx-auto aspect-square w-full max-w-60 [&>svg]:h-full [&>svg]:w-full"
-        // SVG generado localmente por la librería qrcode a partir de nuestra propia URL.
+        // SVG generado localmente (src/lib/qr-art.ts) con el texto escapado.
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       <p className="break-all text-center font-mono text-sm">{url || "…"}</p>
@@ -64,7 +57,7 @@ export function QrCard({ slug, title }: { slug: string; title: string }) {
       )}
 
       <div className="grid grid-cols-2 gap-2">
-        <button className="btn" onClick={downloadPng} disabled={!url}>
+        <button className="btn" onClick={downloadPng} disabled={!svg}>
           <Download size={16} /> PNG
         </button>
         <button className="btn" onClick={downloadSvg} disabled={!svg}>

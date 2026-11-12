@@ -47,7 +47,7 @@ async function QrDetail({ params }: { params: Promise<{ id: string }> }) {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[18rem_1fr]">
         <div className="flex flex-col gap-6">
-          <QrCard slug={qr.slug} title={qr.title} />
+          <QrCard slug={qr.slug} title={qr.title} label={qr.center_label} />
           <div className="card grid grid-cols-2 divide-x divide-line text-center">
             <div className="p-4">
               <p className="text-2xl font-semibold">{totalRes.count ?? 0}</p>
@@ -66,7 +66,10 @@ async function QrDetail({ params }: { params: Promise<{ id: string }> }) {
             <h2 className="border-b border-line p-5 font-semibold">Historial</h2>
             <VersionList qrId={qr.id} currentId={qr.current_version_id} versions={versions} />
           </div>
-          <Settings qrId={qr.id} title={qr.title} description={qr.description} isActive={qr.is_active} />
+          <Settings qrId={qr.id} title={qr.title} description={qr.description}
+            centerLabel={qr.center_label}
+            isActive={qr.is_active}
+          />
         </div>
       </div>
     </div>

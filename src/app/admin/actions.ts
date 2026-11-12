@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { BUCKET, type ContentKind, type PageRef } from "@/lib/constants";
+import { BUCKET, CENTER_LABEL_MAX, type ContentKind, type PageRef } from "@/lib/constants";
 import { newSlug } from "@/lib/slug";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -16,13 +16,14 @@ export async function createQr(formData: FormData) {
   const { supabase, user } = await requireUser();
   const title = clean(formData.get("title"), 120);
   const description = clean(formData.get("description"), 1000) || null;
+  const center_label = clean(formData.get("center_label"), CENTER_LABEL_MAX) || null;
   if (!title) throw new Error("El nombre es obligatorio");
 
   // Reintenta ante el improbable choque de slug (unique).
   for (let i = 0; i < 5; i++) {
     const { data, error } = await supabase
       .from("qr_codes")
-      .insert({ owner_id: user.id, slug: newSlug(), title, description })
+      .insert({ owner_id: user.id, slug: newSlug(), title, description, center_label })
       .select("id")
       .single();
     if (!error && data) {
@@ -40,7 +41,11 @@ export async function updateQrMeta(qrId: string, formData: FormData): Promise<Ac
   if (!title) return { ok: false, error: "El nombre es obligatorio" };
   const { error } = await supabase
     .from("qr_codes")
-    .update({ title, description: clean(formData.get("description"), 1000) || null })
+    .update({
+      title,
+      description: clean(formData.get("description"), 1000) || null,
+      center_label: clean(formData.get("center_label"), CENTER_LABEL_MAX) || null,
+    })
     .eq("id", qrId);
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/admin/qr/${qrId}`);

@@ -7,11 +7,13 @@ export function Settings({
   qrId,
   title,
   description,
+  centerLabel,
   isActive,
 }: {
   qrId: string;
   title: string;
   description: string | null;
+  centerLabel: string | null;
   isActive: boolean;
 }) {
   const [pending, start] = useTransition();
@@ -36,6 +38,12 @@ export function Settings({
         <label className="field">
           <span>Descripción interna</span>
           <textarea name="description" defaultValue={description ?? ""} rows={2} maxLength={1000} />
+        </label>
+        <label className="field">
+          <span>
+            Texto en el centro del QR <span className="font-normal text-muted">(máx. 12, vacío = sin texto)</span>
+          </span>
+          <input name="center_label" defaultValue={centerLabel ?? ""} maxLength={12} placeholder="PetrusCore" />
         </label>
         {msg && <p className={`text-sm ${msg.ok ? "text-ok" : "text-danger"}`}>{msg.text}</p>}
         <button className="btn self-start" disabled={pending}>

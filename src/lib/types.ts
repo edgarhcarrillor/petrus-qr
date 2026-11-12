@@ -6,6 +6,7 @@ export type QrCode = {
   title: string;
   description: string | null;
   is_active: boolean;
+  center_label: string | null;
   current_version_id: string | null;
   created_at: string;
   updated_at: string;
