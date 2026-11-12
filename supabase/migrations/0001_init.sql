@@ -75,6 +75,17 @@ drop trigger if exists qr_codes_touch on public.qr_codes;
 create trigger qr_codes_touch before update on public.qr_codes
   for each row execute function public.touch_updated_at();
 
+-- ─── Permisos de la Data API ───────────────────────────────────────────────
+-- Explícitos, para que funcione aunque el proyecto tenga desactivado
+-- "Automatically expose new tables". `anon` no recibe nada: el visor público
+-- lee desde el servidor con la service role.
+
+revoke all on public.qr_codes, public.qr_versions, public.qr_scans from anon;
+grant select, insert, update, delete on public.qr_codes, public.qr_versions to authenticated;
+grant select on public.qr_scans to authenticated;
+grant all on public.qr_codes, public.qr_versions, public.qr_scans to service_role;
+grant usage, select on sequence public.qr_scans_id_seq to service_role;
+
 -- ─── RLS ───────────────────────────────────────────────────────────────────
 
 alter table public.qr_codes    enable row level security;
