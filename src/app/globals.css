@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --fg: #0f1b2d;
+  --muted: #5b6b80;
+  --line: #dde3ea;
+  --brand: #0b5cad;
+  --brand-ink: #ffffff;
+  --danger: #c62828;
+  --ok: #1b7f3b;
+  --warn-bg: #fff6e0;
+  --warn-fg: #7a5200;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-danger: var(--danger);
+  --color-ok: var(--ok);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-fg: var(--warn-fg);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-surface shadow-sm;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium transition hover:bg-bg disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-brand bg-brand text-white hover:bg-brand hover:brightness-110;
+  }
+  .btn-danger {
+    @apply border-danger text-danger hover:bg-danger hover:text-white;
+  }
+  .field {
+    @apply flex flex-col gap-1.5 text-sm font-medium;
+  }
+  .field input,
+  .field textarea,
+  .field select {
+    @apply rounded-lg border border-line bg-surface px-3 py-2 text-base font-normal outline-none focus:border-brand focus:ring-2 focus:ring-brand/20;
+  }
+}
+
+/* Visor: sin selección ni menú de toque largo (iOS) sobre las páginas. */
+.viewer,
+.viewer img {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
