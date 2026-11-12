@@ -1,8 +1,5 @@
 export const BUCKET = "qr-files";
 
-/** Máximo de caracteres del texto en el centro del QR (cabe sin comprometer la lectura). */
-export const CENTER_LABEL_MAX = 12;
-
 /** Segundos que vive una URL firmada del visor. */
 export const SIGNED_URL_TTL = 60 * 30;
 

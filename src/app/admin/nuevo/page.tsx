@@ -21,12 +21,6 @@ export default function NuevoQr() {
           </span>
           <textarea name="description" rows={3} maxLength={1000} placeholder="Ubicación, cliente, notas…" />
         </label>
-        <label className="field">
-          <span>
-            Texto en el centro del QR <span className="font-normal text-muted">(máx. 12 caracteres, opcional)</span>
-          </span>
-          <input name="center_label" defaultValue="PetrusCore" maxLength={12} />
-        </label>
         <p className="text-sm text-muted">
           Al crearlo se genera un código fijo. Después le subes el contenido (planos, foto, link o
           texto) y lo puedes cambiar cuando quieras sin reimprimir el QR.

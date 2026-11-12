@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Copy, Download, ExternalLink, TriangleAlert } from "lucide-react";
 import { isProvisionalBase, qrBaseUrl } from "@/lib/constants";
-import { buildQrSvg, svgToPng } from "@/lib/qr-art";
+import { buildQrSvg, svgToPng, type QrLogo } from "@/lib/qr-art";
 
-export function QrCard({ slug, title, label }: { slug: string; title: string; label: string | null }) {
+export function QrCard({ slug, title, logo }: { slug: string; title: string; logo: QrLogo | null }) {
   const [base, setBase] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -16,7 +16,7 @@ export function QrCard({ slug, title, label }: { slug: string; title: string; la
   }, []);
 
   const url = base ? `${base}/q/${slug}` : "";
-  const svg = useMemo(() => (url ? buildQrSvg(url, label) : ""), [url, label]);
+  const svg = useMemo(() => (url ? buildQrSvg(url, logo) : ""), [url, logo]);
   const fileBase = `QR-${title.replace(/[^\w-]+/g, "_").slice(0, 40)}-${slug}`;
 
   async function downloadPng() {
@@ -43,7 +43,7 @@ export function QrCard({ slug, title, label }: { slug: string; title: string; la
     <div className="card flex flex-col gap-4 p-5">
       <div
         className="mx-auto aspect-square w-full max-w-60 [&>svg]:h-full [&>svg]:w-full"
-        // SVG generado localmente (src/lib/qr-art.ts) con el texto escapado.
+        // SVG generado localmente (src/lib/qr-art.ts); el logo va como data URI PNG.
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       <p className="break-all text-center font-mono text-sm">{url || "…"}</p>

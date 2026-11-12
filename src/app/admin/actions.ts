@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { BUCKET, CENTER_LABEL_MAX, type ContentKind, type PageRef } from "@/lib/constants";
+import { BUCKET, type ContentKind, type PageRef } from "@/lib/constants";
 import { newSlug } from "@/lib/slug";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -16,14 +16,13 @@ export async function createQr(formData: FormData) {
   const { supabase, user } = await requireUser();
   const title = clean(formData.get("title"), 120);
   const description = clean(formData.get("description"), 1000) || null;
-  const center_label = clean(formData.get("center_label"), CENTER_LABEL_MAX) || null;
   if (!title) throw new Error("El nombre es obligatorio");
 
   // Reintenta ante el improbable choque de slug (unique).
   for (let i = 0; i < 5; i++) {
     const { data, error } = await supabase
       .from("qr_codes")
-      .insert({ owner_id: user.id, slug: newSlug(), title, description, center_label })
+      .insert({ owner_id: user.id, slug: newSlug(), title, description })
       .select("id")
       .single();
     if (!error && data) {
@@ -44,7 +43,7 @@ export async function updateQrMeta(qrId: string, formData: FormData): Promise<Ac
     .update({
       title,
       description: clean(formData.get("description"), 1000) || null,
-      center_label: clean(formData.get("center_label"), CENTER_LABEL_MAX) || null,
+      show_logo: formData.get("show_logo") === "on",
     })
     .eq("id", qrId);
   if (error) return { ok: false, error: error.message };
@@ -201,4 +200,43 @@ export async function signOut() {
   const { supabase } = await requireUser();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+// ─── Logo de la empresa ─────────────────────────────────────────────────────
+
+/** Registra el logo ya subido (PNG normalizado en <uid>/brand/) y borra el anterior. */
+export async function saveLogo(path: string, aspect: number): Promise<ActionResult> {
+  const { supabase, user } = await requireUser();
+  if (!path.startsWith(`${user.id}/brand/`) || !/\.png$/.test(path)) return { ok: false, error: "Ruta inválida" };
+  if (!(aspect >= 0.1 && aspect <= 10)) return { ok: false, error: "Proporción del logo fuera de rango" };
+
+  const { data: prev } = await supabase
+    .from("owner_settings")
+    .select("logo_path")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  const { error } = await supabase
+    .from("owner_settings")
+    .upsert({ owner_id: user.id, logo_path: path, logo_aspect: aspect });
+  if (error) return { ok: false, error: error.message };
+  if (prev?.logo_path && prev.logo_path !== path) await supabase.storage.from(BUCKET).remove([prev.logo_path]);
+
+  revalidatePath("/admin", "layout");
+  return { ok: true };
+}
+
+export async function removeLogo(): Promise<ActionResult> {
+  const { supabase, user } = await requireUser();
+  const { data: prev } = await supabase
+    .from("owner_settings")
+    .select("logo_path")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  const { error } = await supabase
+    .from("owner_settings")
+    .upsert({ owner_id: user.id, logo_path: null, logo_aspect: null });
+  if (error) return { ok: false, error: error.message };
+  if (prev?.logo_path) await supabase.storage.from(BUCKET).remove([prev.logo_path]);
+  revalidatePath("/admin", "layout");
+  return { ok: true };
 }

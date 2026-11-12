@@ -7,13 +7,15 @@ export function Settings({
   qrId,
   title,
   description,
-  centerLabel,
+  showLogo,
+  hasLogo,
   isActive,
 }: {
   qrId: string;
   title: string;
   description: string | null;
-  centerLabel: string | null;
+  showLogo: boolean;
+  hasLogo: boolean;
   isActive: boolean;
 }) {
   const [pending, start] = useTransition();
@@ -39,11 +41,14 @@ export function Settings({
           <span>Descripción interna</span>
           <textarea name="description" defaultValue={description ?? ""} rows={2} maxLength={1000} />
         </label>
-        <label className="field">
+        <label className="flex items-start gap-3 text-sm">
+          <input name="show_logo" type="checkbox" defaultChecked={showLogo} className="mt-0.5 size-4 accent-brand" />
           <span>
-            Texto en el centro del QR <span className="font-normal text-muted">(máx. 12, vacío = sin texto)</span>
+            <span className="font-medium">Mostrar el logo en el centro del QR</span>
+            <span className="block text-muted">
+              {hasLogo ? "Usa el logo de la empresa." : "Aún no hay logo: súbelo en «Logo»."}
+            </span>
           </span>
-          <input name="center_label" defaultValue={centerLabel ?? ""} maxLength={12} placeholder="PetrusCore" />
         </label>
         {msg && <p className={`text-sm ${msg.ok ? "text-ok" : "text-danger"}`}>{msg.text}</p>}
         <button className="btn self-start" disabled={pending}>

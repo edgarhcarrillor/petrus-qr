@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/auth";
+import { getOwnerLogo } from "@/lib/brand";
 import { daysAgoIso } from "@/lib/format";
 import type { QrCode, QrVersion } from "@/lib/types";
 import { ContentEditor } from "./content-editor";
@@ -30,11 +31,12 @@ async function QrDetail({ params }: { params: Promise<{ id: string }> }) {
   const { supabase, user } = await requireUser();
 
   const since = daysAgoIso(30);
-  const [qrRes, versionsRes, totalRes, monthRes] = await Promise.all([
+  const [qrRes, versionsRes, totalRes, monthRes, logo] = await Promise.all([
     supabase.from("qr_codes").select("*").eq("id", id).maybeSingle(),
     supabase.from("qr_versions").select("*").eq("qr_id", id).order("created_at", { ascending: false }),
     supabase.from("qr_scans").select("id", { count: "exact", head: true }).eq("qr_id", id),
     supabase.from("qr_scans").select("id", { count: "exact", head: true }).eq("qr_id", id).gte("scanned_at", since),
+    getOwnerLogo(supabase, user.id),
   ]);
   const qr = qrRes.data as QrCode | null;
   if (!qr) notFound();
@@ -47,7 +49,7 @@ async function QrDetail({ params }: { params: Promise<{ id: string }> }) {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[18rem_1fr]">
         <div className="flex flex-col gap-6">
-          <QrCard slug={qr.slug} title={qr.title} label={qr.center_label} />
+          <QrCard slug={qr.slug} title={qr.title} logo={qr.show_logo ? logo : null} />
           <div className="card grid grid-cols-2 divide-x divide-line text-center">
             <div className="p-4">
               <p className="text-2xl font-semibold">{totalRes.count ?? 0}</p>
@@ -67,7 +69,8 @@ async function QrDetail({ params }: { params: Promise<{ id: string }> }) {
             <VersionList qrId={qr.id} currentId={qr.current_version_id} versions={versions} />
           </div>
           <Settings qrId={qr.id} title={qr.title} description={qr.description}
-            centerLabel={qr.center_label}
+            showLogo={qr.show_logo}
+            hasLogo={!!logo}
             isActive={qr.is_active}
           />
         </div>
